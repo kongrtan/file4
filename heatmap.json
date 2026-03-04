@@ -1,0 +1,85 @@
+{
+  "type": "heatmap",
+  "title": "Zone별 과일 수량 히트맵 (v9.3.2)",
+  "datasource": {
+    "type": "postgres",
+    "uid": "P12345678"
+  },
+  "targets": [
+    {
+      "format": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "P12345678"
+      },
+      "rawSql": "WITH w AS (\n    SELECT 'azone' AS zone_nm, '사과' AS item_nm, 10 AS val UNION ALL\n    SELECT 'azone', '배', 20 UNION ALL\n    SELECT 'azone', '딸기', 30 UNION ALL\n    SELECT 'azone', '토마토', 10 UNION ALL\n    SELECT 'bzone', '사과', 11 UNION ALL\n    SELECT 'bzone', '배', 20 UNION ALL\n    SELECT 'bzone', '딸기', 30 UNION ALL\n    SELECT 'bzone', '토마토', 10 UNION ALL\n    SELECT 'czone', '사과', 11 UNION ALL\n    SELECT 'czone', '배', 20 UNION ALL\n    SELECT 'czone', '딸기', 30 UNION ALL\n    SELECT 'czone', '토마토', 10 UNION ALL\n    SELECT 'dzone', '사과', 11 UNION ALL\n    SELECT 'dzone', '배', 20 UNION ALL\n    SELECT 'dzone', '딸기', 30 UNION ALL\n    SELECT 'dzone', '토마토', 10\n)\nSELECT \n    zone_nm,\n    item_nm,\n    val\nFROM w\nORDER BY zone_nm ASC, item_nm ASC",
+      "refId": "A"
+    }
+  ],
+  "options": {
+    "calculate": false,
+    "color": {
+      "mode": "scheme",
+      "scheme": "Oranges",
+      "steps": 64,
+      "exponent": 0.5
+    },
+    "yAxis": {
+      "axisPlacement": "left",
+      "reverse": false
+    },
+    "rows": {
+      "show": true
+    },
+    "columns": {
+      "show": true
+    },
+    "cellValues": {
+      "show": true
+    },
+    "tooltip": {
+      "show": true,
+      "yHistogram": false
+    },
+    "legend": {
+      "show": true
+    }
+  },
+  "fieldConfig": {
+    "defaults": {
+      "custom": {
+        "hideFrom": {
+          "tooltip": false,
+          "viz": false,
+          "legend": false
+        }
+      }
+    },
+    "overrides": [
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "item_nm"
+        },
+        "properties": [
+          {
+            "id": "custom.xAxis",
+            "value": true
+          }
+        ]
+      },
+      {
+        "matcher": {
+          "id": "byName",
+          "options": "zone_nm"
+        },
+        "properties": [
+          {
+            "id": "custom.yAxis",
+            "value": true
+          }
+        ]
+      }
+    ]
+  }
+}

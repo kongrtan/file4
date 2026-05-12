@@ -1,0 +1,118 @@
+---
+apiVersion: installer.kubesphere.io/v1alpha1
+kind: ClusterConfiguration
+metadata:
+  name: ks-installer
+  namespace: kubesphere-system
+  labels:
+    version: v3.3.2
+spec:
+  persistence:
+    storageClass: ""
+  authentication:
+    jwtSecret: ""
+    providerType: ""
+    #oauthOptions:
+    #  issuer: https://sso.k88s.store/realms/kubesphere
+    #  clientId: kubesphere
+    #  clientSecret: "0GIlMVNA65MCpn7KSMLHju04DYuDT73Z"
+    #  redirectUrl: https://ks.k88s.store/login
+    #  callbackUrl: https://ks.k88s.store/oauth/redirect
+    #  scope: "openid profile email"
+    #  responseType: "code"
+  local_registry: "swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io"
+  etcd:
+    monitoring: false
+    endpointIps: localhost
+    port: 2379
+    tlsEnable: true
+  common:
+    core:
+      console:
+        enableMultiLogin: true
+        port: 30880
+        type: NodePort
+    redis:
+      enabled: false # 사용 안 함
+      enableHA: false
+      volumeSize: 2Gi
+    openldap:
+      enabled: false # 사용 안 함
+      volumeSize: 2Gi
+    minio:
+      volumeSize: 20Gi
+    monitoring:
+      # 모니터링 전체 비활성화를 위해 아래 enabled: false와 연동됨
+      endpoint: http://prometheus-operated.kubesphere-monitoring-system.svc:9090
+      GPUMonitoring:
+        enabled: false
+    gpu:
+      kinds:
+      - resourceName: "nvidia.com/gpu"
+        resourceType: "GPU"
+        default: true
+    es:
+      logMaxAge: 7
+      elkPrefix: logstash
+      basicAuth:
+        enabled: false
+      externalElasticsearchHost: ""
+      externalElasticsearchPort: ""
+  alerting:
+    enabled: false # 알람 비활성화
+  auditing:
+    enabled: false # 감사 로그 비활성화
+  devops:
+    enabled: false # 데브옵스 비활성화
+    jenkinsMemoryLim: 4Gi
+    jenkinsMemoryReq: 2Gi
+    jenkinsVolumeSize: 8Gi
+  events:
+    enabled: false # 이벤트 시스템 비활성화
+  logging:
+    enabled: false # 로깅 시스템 비활성화
+    logsidecar:
+      enabled: false # 사이드카 수집기 비활성화
+      replicas: 2
+  metrics_server:
+    enabled: false # HPA 미사용 시 비활성화 (보안 정책 충돌 방지)
+  monitoring:
+    enabled: false # 모니터링 시스템 전체 비활성화
+    storageClass: ""
+    node_exporter:
+      port: 9100
+    gpu:
+      nvidia_dcgm_exporter:
+        enabled: false
+  multicluster:
+    clusterRole: host
+  network:
+    networkpolicy:
+      enabled: false # 네트워크 정책 비활성화
+    ippool:
+      type: none
+    topology:
+      type: none
+  openpitrix:
+    store:
+      enabled: false # 앱스토어 비활성화 (보안 정책 준수를 위해 false 권장)
+  servicemesh:
+    enabled: false # 서비스 메시 비활성화
+    istio:
+      components:
+        ingressGateways:
+        - name: istio-ingressgateway
+          enabled: false
+        cni:
+          enabled: false
+  edgeruntime:
+    enabled: false # 에지 컴퓨팅 비활성화
+    kubeedge:
+      enabled: false
+      iptables-manager:
+        enabled: false
+  gatekeeper:
+    enabled: false # 게이트키퍼 비활성화
+  terminal:
+    # image: 'alpine:3.15' # 필요 시 Non-root 이미지로 명시적 지정
+    timeout: 600

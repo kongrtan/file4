@@ -1,0 +1,317 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterconfigurations.installer.kubesphere.io
+spec:
+  group: installer.kubesphere.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+  scope: Namespaced
+  names:
+    plural: clusterconfigurations
+    singular: clusterconfiguration
+    kind: ClusterConfiguration
+    shortNames:
+      - cc
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubesphere-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ks-installer
+  namespace: kubesphere-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ks-installer
+rules:
+- apiGroups:
+  - alerting.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - ""
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - extensions
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - batch
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - apiregistration.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - tenant.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - certificates.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - devops.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - logging.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - jaegertracing.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - policy
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - autoscaling
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - networking.istio.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - config.istio.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - iam.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - notification.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - auditing.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - events.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - core.kubefed.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - installer.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - storage.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - security.istio.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - monitoring.kiali.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - kiali.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - edgeruntime.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - types.kubefed.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - monitoring.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - application.kubesphere.io
+  resources:
+  - '*'
+  verbs:
+  - '*'
+
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ks-installer
+subjects:
+- kind: ServiceAccount
+  name: ks-installer
+  namespace: kubesphere-system
+roleRef:
+  kind: ClusterRole
+  name: ks-installer
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ks-installer
+  namespace: kubesphere-system
+  labels:
+    app: ks-installer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ks-installer
+  template:
+    metadata:
+      labels:
+        app: ks-installer
+    spec:
+      serviceAccountName: ks-installer
+      # 파드 수준의 보안 설정
+      securityContext:
+        runAsNonRoot: true        # Root 사용자로 실행 금지
+        runAsUser: 1002           # 특정 일반 사용자 ID 지정
+        fsGroup: 2000             # 볼륨 권한 그룹 지정
+        seccompProfile:           # 시스템 호출 제한 설정
+          type: RuntimeDefault
+      containers:
+      - name: installer
+        image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/kubesphere/ks-installer:v3.3.2
+        imagePullPolicy: "Always"
+        # 컨테이너 수준의 보안 설정
+        securityContext:
+          allowPrivilegeEscalation: false  # 권한 상승 금지
+          capabilities:
+            drop: ["ALL"]                  # 모든 리눅스 커널 권한 제거
+          readOnlyRootFilesystem: false    # 인스톨러는 임시 파일 생성이 필요하므로 false 유지
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 20m
+            memory: 100Mi

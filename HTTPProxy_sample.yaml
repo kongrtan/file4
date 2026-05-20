@@ -1,61 +1,65 @@
+apiVersion: projectcontour.io/v1alpha1
+kind: ExtensionService
+metadata:
+  name: abc-auth-extension
+  namespace: abc # 서비스와 동일한 네임스페이스로 지정
+spec:
+  # abc-service가 일반 HTTP/1.1 앱이라면 h2c(Cleartext)를 지정합니다.
+  protocol: h2c 
+  services:
+    - name: abc-service # 같은 네임스페이스의 메인 서비스를 바로 바라봅니다.
+      port: 80
+---
 apiVersion: projectcontour.io/v1
 kind: HTTPProxy
 metadata:
   name: abc-service-proxy
-  namespace: default # 인그레스가 위치할 네임스페이스
+  namespace: abc # 네임스페이스 통일
 spec:
   virtualhost:
     fqdn: abc.com
     tls:
       secretName: abc-com-tls-secret
-    # [글로벌 인증 기본 정의] 이 가상호스트 내에서 쓸 인증 서버 설정
+    # [글로벌 인증 기본 정의]
     authorization:
       extensionRef:
-        name: auth-server-extension
-        namespace: projectcontour-auth # ExtensionService가 있는 네임스페이스
+        name: abc-auth-extension
+        namespace: abc # 같은 abc 네임스페이스의 Extension을 참조
       authPolicy:
-        disabled: true # 기본적으로는 인증을 끕니다 (abc 서비스가 기본이므로)
+        disabled: true # 기본 / 경로는 인증을 무시 (abc 서비스용)
   routes:
     # -------------------------------------------------------------
-    # 1. Grafana 서비스 영역 (인증 필수)
+    # 1. Grafana 서비스 영역 (인증 후 그라파나 파드로 전달)
     # -------------------------------------------------------------
     - conditions:
         - prefix: /grafana
       services:
         - name: grafana-service
+          # 만약 Grafana가 다른 네임스페이스(예: grafana)에 있다면 
+          # 아래와 같이 namespace 필드를 명시해 주면 교차 연동됩니다.
+          # name: grafana-service
+          # namespace: grafana 
           port: 3000
-      # 이 경로(Grafana)에서만 외부 인증을 활성화합니다.
       authorization:
         authPolicy:
-          disabled: false 
-      # Nginx의 auth-response-headers 및 configuration-snippet 대체
+          disabled: false # Grafana 접근 시에만 인증 활성화
+      # Envoy가 abc-service:80의 특정 경로로 인증 검증 요청을 찌르도록 라우팅 제어
+      context:
+        pathPrefix: /api/v1/my/grafana/auth
+      # 인증 통과 후 가져온 X-User-Id를 Grafana가 인식하는 X-WEBAUTH-USER로 변환 이식
       requestHeadersPolicy:
         set:
           - name: X-WEBAUTH-USER
             value: "%REQ(X-User-Id)%"
 
     # -------------------------------------------------------------
-    # 2. 인증 API 영역 (필요 시 라우팅 노출)
-    # -------------------------------------------------------------
-    - conditions:
-        - prefix: /api/v1/my/grafana/auth
-      services:
-        - name: auth-backend-service
-          port: 8080
-      # 자기 자신을 호출하는 인증 루프에 빠지지 않도록 인증 통과
-      authorization:
-        authPolicy:
-          disabled: true
-
-    # -------------------------------------------------------------
-    # 3. 그 외 모든 경로 (abc 서비스 담당, 인증 제외)
+    # 2. 메인 서비스 영역 (나머지 모든 경로 처리, abc 서비스 담당)
     # -------------------------------------------------------------
     - conditions:
         - prefix: /
       services:
-        - name: abc-backend-service
+        - name: abc-service
           port: 80
-      # 루트 경로는 인증을 타지 않고 바로 서비스로 연결됩니다.
       authorization:
         authPolicy:
-          disabled: true
+          disabled: true # 메인 웹 서비스는 외부 인증 필터를 거치지 않음

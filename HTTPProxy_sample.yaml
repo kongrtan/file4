@@ -1,0 +1,61 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: abc-service-proxy
+  namespace: default # 인그레스가 위치할 네임스페이스
+spec:
+  virtualhost:
+    fqdn: abc.com
+    tls:
+      secretName: abc-com-tls-secret
+    # [글로벌 인증 기본 정의] 이 가상호스트 내에서 쓸 인증 서버 설정
+    authorization:
+      extensionRef:
+        name: auth-server-extension
+        namespace: projectcontour-auth # ExtensionService가 있는 네임스페이스
+      authPolicy:
+        disabled: true # 기본적으로는 인증을 끕니다 (abc 서비스가 기본이므로)
+  routes:
+    # -------------------------------------------------------------
+    # 1. Grafana 서비스 영역 (인증 필수)
+    # -------------------------------------------------------------
+    - conditions:
+        - prefix: /grafana
+      services:
+        - name: grafana-service
+          port: 3000
+      # 이 경로(Grafana)에서만 외부 인증을 활성화합니다.
+      authorization:
+        authPolicy:
+          disabled: false 
+      # Nginx의 auth-response-headers 및 configuration-snippet 대체
+      requestHeadersPolicy:
+        set:
+          - name: X-WEBAUTH-USER
+            value: "%REQ(X-User-Id)%"
+
+    # -------------------------------------------------------------
+    # 2. 인증 API 영역 (필요 시 라우팅 노출)
+    # -------------------------------------------------------------
+    - conditions:
+        - prefix: /api/v1/my/grafana/auth
+      services:
+        - name: auth-backend-service
+          port: 8080
+      # 자기 자신을 호출하는 인증 루프에 빠지지 않도록 인증 통과
+      authorization:
+        authPolicy:
+          disabled: true
+
+    # -------------------------------------------------------------
+    # 3. 그 외 모든 경로 (abc 서비스 담당, 인증 제외)
+    # -------------------------------------------------------------
+    - conditions:
+        - prefix: /
+      services:
+        - name: abc-backend-service
+          port: 80
+      # 루트 경로는 인증을 타지 않고 바로 서비스로 연결됩니다.
+      authorization:
+        authPolicy:
+          disabled: true

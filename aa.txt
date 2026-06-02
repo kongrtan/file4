@@ -1,0 +1,104 @@
+contour-authserver deplyment,secret,service 생성해줄수 있니
+
+contour-authserver를 구성하기 위한 Secret, Service, Deployment 리소스를 정리한 매니페스트입니다.
+
+환경에 맞게 쉽게 관리할 수 있도록 projectcontour-auth라는 별도의 네임스페이스를 기준으로 작성했습니다.
+
+1. Secret 생성 및 애노테이션 지정
+앞서 생성한 htpasswd 파일 내용을 auth 키값에 베이스64 인코딩하여 넣거나, 아래 템플릿에 직접 값을 채워 넣을 수 있습니다. Contour가 인식할 수 있도록 projectcontour.io/auth-type: basic 애노테이션이 반드시 포함되어야 합니다.
+
+YAML
+apiVersion: v1
+kind: Secret
+metadata:
+  name: basic-auth-secret
+  namespace: projectcontour-auth
+  annotations:
+    projectcontour.io/auth-type: basic
+type: Opaque
+data:
+  # 'admin:$apr1$7u92...' 형태의 htpasswd 파일 내용을 base64로 인코딩한 값입니다.
+  # echo -n 'admin:password_hash' | base64 로 생성 가능합니다.
+  auth: YWRtaW46JGFwcjEkcDRzc3cwcmQK
+2. contour-authserver Deployment
+contour-authserver 컨테이너를 실행하고, 위에서 생성한 Secret을 /config 경로에 볼륨으로 마운트합니다. 컨테이너 아규먼트로 --auth-file=/config/auth를 지정하여 해당 파일을 검증에 사용하도록 설정합니다.
+
+YAML
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contour-authserver
+  namespace: projectcontour-auth
+  labels:
+    app: contour-authserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: contour-authserver
+  template:
+    metadata:
+      labels:
+        app: contour-authserver
+    spec:
+      containers:
+        - name: authserver
+          image: ghcr.io/projectcontour/contour-authserver:v0.3.0 # 사용 중인 Contour 버전에 맞춰 태그 조정 필요
+          imagePullPolicy: IfNotPresent
+          args:
+            - "auth-htpasswd"
+            - "--auth-file=/config/auth"
+            - "--address=:9443"
+          ports:
+            - name: grpc
+              containerPort: 9443
+              protocol: TCP
+          volumeMounts:
+            - name: auth-volume
+              mountPath: /config
+              readOnly: true
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+      volumes:
+        - name: auth-volume
+          secret:
+            secretName: basic-auth-secret
+3. Service 생성
+Envoy(Contour)가 gRPC 통신으로 이 인증 서버에 접근할 수 있도록 인클러스터 서비스를 노출합니다.
+
+YAML
+apiVersion: v1
+kind: Service
+metadata:
+  name: htpasswd
+  namespace: projectcontour-auth
+  labels:
+    app: contour-authserver
+spec:
+  ports:
+    - name: grpc
+      port: 9443
+      targetPort: 9443
+      protocol: TCP
+  selector:
+    app: contour-authserver
+  type: ClusterIP
+💡 리소스 적용 후 확인 절차
+위 매니페스트들을 하나의 파일(예: contour-auth-setup.yaml)로 묶거나 각각 생성한 뒤 아래 명령어로 적용합니다.
+
+Bash
+# 네임스페이스가 없다면 먼저 생성
+kubectl create namespace projectcontour-auth --dry-run=client -o yaml | kubectl apply -f -
+
+# 매니페스트 적용
+kubectl apply -f contour-auth-setup.yaml
+
+# 파드 정상 구동 및 로그 확인
+kubectl get pods -n projectcontour-auth
+kubectl logs -l app=contour-authserver -n projectcontour-auth
+이 구성이 완료되면 이전에 가이드해 드린 ExtensionService에서 name: htpasswd, port: 9443으로 지정하여 정상적으로 연동할 수 있습니다.

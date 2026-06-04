@@ -1,15 +1,20 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// [변경] ConfigureKestrel 내부에서 포트를 하드코딩하지 않고,
-// 프로토콜(HTTP/2) 전용 설정을 환경변수로부터 유연하게 적용받도록 옵션만 제어합니다.
+// 포트를 동적으로 읽어오는 로직 (기존 구성 유지)
+string portStr = builder.Configuration["GRPC_PORT"] ?? "3000";
+int.TryParse(portStr, out int grpcPort);
+
 builder.WebHost.ConfigureKestrel(options =>
 {
-    // 전역 기본 프로토콜을 HTTP/2로 지정 (주소/포트는 외부 설정을 따름)
-    options.Configure().Endpoint("Default", listenOptions =>
+    // [핵심 마스터 키] 미들웨어 진입 전, HTTP/2 가상 헤더와 전송 프로토콜 미스매치 검증을 끕니다.
+    options.AllowAlternativeSchemes = true;
+
+    options.ListenAnyIP(grpcPort, listenOptions =>
     {
         listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2;
     });
 });
+
 
 builder.Services.AddGrpc();
 var app = builder.Build();

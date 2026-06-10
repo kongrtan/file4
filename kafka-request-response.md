@@ -1,4 +1,55 @@
 ```mermaid
+graph TD
+    %% 외부 사용자 및 인그레스
+    User((사용자)) -->|HTTP REST| Ingress[k8s Ingress / 인프라 LB]
+
+    %% k8s Deployment 내부 (Replica 3)
+    subgraph k8s_Deployment [MF Worker Deployment]
+        direction LR
+        PodA[Pod A <br/> 🟢 HTTP 수신처] 
+        PodB[Pod B <br/> ⚡ Kafka 컨슘 주체]
+        PodC[Pod C]
+        Redis_PS[Redis: Pub/Sub Channel]
+    end
+
+    %% 인그레스 라우팅
+    Ingress -->|랜덤 로드밸런싱| PodA
+
+    %% 외부 및 내부 메시지 브로커
+    subgraph Infrastructure [외부 인프라 레이어]
+        Kafka_REQ[Kafka: Request Topic]
+        Kafka_REP[Kafka: Reply Topic]
+        Legacy[🏢 기간계 시스템]
+    end
+
+    %% 데이터 흐름 연결
+    PodA -->|1. Produce| Kafka_REQ
+    Kafka_REQ --> Legacy[🏢 기간계 시스템]
+    Legacy -->|2. Produce| Kafka_REP
+    
+    %% Pod B가 컨슘하여 Redis로 전파
+    Kafka_REP -->|3. Consume| PodB
+    PodB -->|4. Pub| Redis_PS
+
+    %% Redis가 모든 Pod로 브로드캐스트
+    Redis_PS -.->|5. Sub Broadcast| PodA
+    Redis_PS -.->|5. Sub Broadcast| PodB
+    Redis_PS -.->|5. Sub Broadcast| PodC
+
+
+
+    %% 최종 응답
+    PodA -.->|6. HTTP Response| User
+
+    %% 스타일링
+    style k8s_Deployment fill:#2d3748,stroke:#4a5568,stroke-width:2px
+    style Infrastructure fill:#2d3748,stroke:#4a5568,stroke-width:2px
+    style Legacy fill:#3b82f6,stroke:#333,stroke-width:2px
+```
+
+
+
+```mermaid
 sequenceDiagram
     autonumber
     actor User as 사용자 (User)
@@ -35,48 +86,3 @@ sequenceDiagram
     PodA-->>User: HTTP 200 OK (최종 응답 전달)
 ```
 
-```mermaid
-graph TD
-    %% 외부 사용자 및 인그레스
-    User((사용자)) -->|HTTP REST| Ingress[k8s Ingress / 인프라 LB]
-
-    %% k8s Deployment 내부 (Replica 3)
-    subgraph k8s_Deployment [.NET 10 Gateway Deployment]
-        direction LR
-        PodA[Pod A <br/> 🟢 HTTP 수신처] 
-        PodB[Pod B <br/> ⚡ Kafka 컨슘 주체]
-        PodC[Pod C]
-    end
-
-    %% 인그레스 라우팅
-    Ingress -->|랜덤 로드밸런싱| PodA
-
-    %% 외부 및 내부 메시지 브로커
-    subgraph Infrastructure [외부 인프라 레이어]
-        Kafka_REQ[Kafka: Request Topic]
-        Kafka_REP[Kafka: Reply Topic]
-        Redis_PS[Redis: Pub/Sub Channel]
-    end
-
-    %% 데이터 흐름 연결
-    PodA -->|1. Produce| Kafka_REQ
-    Kafka_REQ --> Legacy[🏢 기간계 시스템]
-    Legacy -->|2. Produce| Kafka_REP
-    
-    %% Pod B가 컨슘하여 Redis로 전파
-    Kafka_REP -->|3. Consume| PodB
-    PodB -->|4. Pub| Redis_PS
-
-    %% Redis가 모든 Pod로 브로드캐스트
-    Redis_PS -.->|5. Sub Broadcast| PodA
-    Redis_PS -.->|5. Sub Broadcast| PodB
-    Redis_PS -.->|5. Sub Broadcast| PodC
-
-    %% 최종 응답
-    PodA -.->|6. HTTP Response| User
-
-    %% 스타일링
-    style k8s_Deployment fill:#2d3748,stroke:#4a5568,stroke-width:2px
-    style Infrastructure fill:#bbf,stroke:#333,stroke-width:2px
-    style Legacy fill:#ff9,stroke:#333,stroke-width:2px
-```

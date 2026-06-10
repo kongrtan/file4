@@ -76,7 +76,7 @@ graph TD
     PodA -.->|6. HTTP Response| User
 
     %% 스타일링
-    style k8s_Deployment fill:#eeeeee,stroke:#333,stroke-width:2px
+    style k8s_Deployment fill:#2d3748,stroke:#4a5568,stroke-width:2px
     style Infrastructure fill:#bbf,stroke:#333,stroke-width:2px
     style Legacy fill:#ff9,stroke:#333,stroke-width:2px
 ```

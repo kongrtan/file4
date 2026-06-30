@@ -30,6 +30,11 @@ spec:
       labels:
         app: kong
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000    
       containers:
       - name: proxy
         image: kong:3.9.0 # 3.9.0 버전 이미지 적용

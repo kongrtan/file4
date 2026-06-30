@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kong
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-custom-config
+  namespace: kong
+data:
+  kong.yml: |
+    _format_version: "3.0"
+    _transform: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong-minimal
+  namespace: kong
+  labels:
+    app: kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong
+  template:
+    metadata:
+      labels:
+        app: kong
+    spec:
+      containers:
+      - name: proxy
+        image: kong:3.9.0 # 3.9.0 버전 이미지 적용
+        env:
+        - name: KONG_DATABASE
+          value: "off"
+        - name: KONG_DECLARATIVE_CONFIG
+          value: /usr/local/kong/declarative/kong.yml
+        
+        # [요구사항 1] L4 Stream 활성화
+        - name: KONG_STREAM_LISTEN
+          value: "0.0.0.0:9100"
+        
+        # 기본 Listen 포트 설정
+        - name: KONG_PROXY_LISTEN
+          value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+        - name: KONG_ADMIN_LISTEN
+          value: "0.0.0.0:8001"
+        
+        # [요구사항 2] Kong Manager 관련 설정 (3.x 버전 필수 규격 반영)
+        - name: KONG_ADMIN_GUI_LISTEN
+          value: "0.0.0.0:8002"
+        # 브라우저가 외부에서 Admin API에 접근할 때 사용할 주소 (NodePort 32001번 매핑)
+        - name: KONG_ADMIN_API_URI
+          value: "http://localhost:32001" 
+        ports:
+        - name: proxy
+          containerPort: 8000
+        - name: proxy-ssl
+          containerPort: 8443
+        - name: admin-api
+          containerPort: 8001
+        - name: manager-gui
+          containerPort: 8002
+        - name: stream-tcp
+          containerPort: 9100
+        volumeMounts:
+        - name: kong-config-volume
+          mountPath: /usr/local/kong/declarative/
+      volumes:
+      - name: kong-config-volume
+        configMap:
+          name: kong-custom-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-minimal-service
+  namespace: kong
+spec:
+  type: NodePort
+  selector:
+    app: kong
+  ports:
+    - name: proxy
+      port: 8000
+      targetPort: 8000
+      nodePort: 32000
+    - name: admin-api
+      port: 8001
+      targetPort: 8001
+      nodePort: 32001 # GUI가 외부에서 호출하기 위해 노드포트로 개방
+    - name: manager-gui
+      port: 8002
+      targetPort: 8002
+      nodePort: 32002 # Kong Manager 접속 포트
+    - name: stream-tcp
+      port: 9100
+      targetPort: 9100
+      nodePort: 32100 # Stream L4 포트

@@ -1,0 +1,34 @@
+receivers:
+  # 1. Deployment의 메트릭(desired, available 등) 수집
+  k8scluster:
+    collection_interval: 10s
+    node_conditions_to_report: [Ready, Ready]
+    allocatable_types_to_report: [cpu, memory]
+
+  # 2. Deployment 오브젝트의 상태 및 변경 이벤트 수집
+  k8sobjects:
+    objects:
+      - gvr:
+          group: "apps"
+          version: "v1"
+          resource: "deployments"
+        mode: watch
+
+processors:
+  batch:
+
+exporters:
+  # 테스트 및 확인용 디버그 출력 (실제 환경에서는 otlp 등으로 변경)
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    metrics:
+      receivers: [k8scluster]
+      processors: [batch]
+      exporters: [debug]
+    logs:
+      receivers: [k8sobjects]
+      processors: [batch]
+      exporters: [debug]

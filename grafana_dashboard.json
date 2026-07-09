@@ -89,21 +89,11 @@
   "timezone": "browser",
   "title": "APIP Pod Resources (CPU / Memory vs request~limit)",
   "uid": "apip-pod-resources",
-  "version": 1,
+  "version": 2,
   "panels": [
     {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
-      "id": 100,
-      "panels": [],
-      "repeat": "pod",
-      "repeatDirection": "h",
-      "title": "$pod",
-      "type": "row"
-    },
-    {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "CPU usage (line) bounded by request (min) and limit (max).",
+      "description": "Pod CPU(left axis) & Memory(right axis). Solid = usage, dashed = request(min) / limit(max).",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -112,10 +102,10 @@
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
-            "axisPlacement": "auto",
+            "axisPlacement": "left",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 8,
+            "fillOpacity": 6,
             "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
@@ -138,45 +128,60 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "request (min)" },
+            "matcher": { "id": "byRegexp", "options": ".*mem.*" },
             "properties": [
-              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
-              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
-              { "id": "custom.fillOpacity", "value": 0 },
-              { "id": "custom.lineWidth", "value": 1 }
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "unit", "value": "bytes" }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "limit (max)" },
+            "matcher": { "id": "byRegexp", "options": ".*req.*" },
             "properties": [
-              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
               { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
               { "id": "custom.fillOpacity", "value": 0 },
-              { "id": "custom.lineWidth", "value": 1 }
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "usage" },
+            "matcher": { "id": "byRegexp", "options": ".*lim.*" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "cpu" },
             "properties": [
               { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "mem" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
             ]
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 0 },
       "id": 1,
+      "maxPerRow": 3,
       "options": {
-        "legend": { "calcs": ["last", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "legend": { "calcs": ["last"], "displayMode": "list", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "repeat": null,
-      "title": "$pod — CPU",
+      "repeat": "pod",
+      "repeatDirection": "h",
+      "title": "$pod",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
           "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[1m]))",
-          "legendFormat": "usage",
+          "legendFormat": "cpu",
           "range": true,
           "refId": "A"
         },
@@ -184,7 +189,7 @@
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"})",
-          "legendFormat": "request (min)",
+          "legendFormat": "cpu req",
           "range": true,
           "refId": "B"
         },
@@ -192,107 +197,33 @@
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"})",
-          "legendFormat": "limit (max)",
+          "legendFormat": "cpu lim",
           "range": true,
           "refId": "C"
-        }
-      ],
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Memory working set (line) bounded by request (min) and limit (max).",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 8,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "mappings": [],
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
-          },
-          "unit": "bytes"
         },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "request (min)" },
-            "properties": [
-              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
-              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
-              { "id": "custom.fillOpacity", "value": 0 },
-              { "id": "custom.lineWidth", "value": 1 }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "limit (max)" },
-            "properties": [
-              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
-              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
-              { "id": "custom.fillOpacity", "value": 0 },
-              { "id": "custom.lineWidth", "value": 1 }
-            ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "usage" },
-            "properties": [
-              { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
-            ]
-          }
-        ]
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
-      "id": 2,
-      "options": {
-        "legend": { "calcs": ["last", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "desc" }
-      },
-      "repeat": null,
-      "title": "$pod — Memory",
-      "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
           "expr": "sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"})",
-          "legendFormat": "usage",
+          "legendFormat": "mem",
           "range": true,
-          "refId": "A"
+          "refId": "D"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"})",
-          "legendFormat": "request (min)",
+          "legendFormat": "mem req",
           "range": true,
-          "refId": "B"
+          "refId": "E"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
           "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"})",
-          "legendFormat": "limit (max)",
+          "legendFormat": "mem lim",
           "range": true,
-          "refId": "C"
+          "refId": "F"
         }
       ],
       "type": "timeseries"

@@ -87,9 +87,9 @@
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "APIP Workload Resources (Memory / CPU vs request~limit)",
+  "title": "APIP Workload Resources (Memory / CPU / Storage)",
   "uid": "apip-workload-resources",
-  "version": 8,
+  "version": 10,
   "panels": [
     {
       "collapsed": false,
@@ -101,7 +101,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Per-pod memory working set (solid, one line per pod). Dashed = workload request(min)/limit(max).",
+      "description": "Per-pod memory working set (one line per pod). Dashed = workload request(min)/limit(max).",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -155,7 +155,7 @@
           }
         ]
       },
-      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 1 },
+      "gridPos": { "h": 9, "w": 4, "x": 0, "y": 1 },
       "id": 1,
       "maxPerRow": 5,
       "options": {
@@ -169,8 +169,8 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "label_replace(sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"}), \"p\", \"$1\", \"pod\", \".*-([^-]+)\")",
-          "legendFormat": "{{p}}",
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"})",
+          "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
         },
@@ -195,7 +195,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
       "id": 300,
       "panels": [],
       "title": "2. CPU  (per-pod usage, workload req(min)/lim(max))",
@@ -203,7 +203,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Per-pod CPU usage (solid, one line per pod). Dashed = workload request(min)/limit(max).",
+      "description": "Per-pod CPU usage (one line per pod). Dashed = workload request(min)/limit(max).",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -257,7 +257,7 @@
           }
         ]
       },
-      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 8 },
+      "gridPos": { "h": 9, "w": 4, "x": 0, "y": 11 },
       "id": 2,
       "maxPerRow": 5,
       "options": {
@@ -271,8 +271,8 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "label_replace(sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"}[1m])), \"p\", \"$1\", \"pod\", \".*-([^-]+)\")",
-          "legendFormat": "{{p}}",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"}[1m]))",
+          "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
         },
@@ -291,6 +291,90 @@
           "legendFormat": "lim",
           "range": true,
           "refId": "C"
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "id": 302,
+      "panels": [],
+      "title": "3. Storage  (per-namespace PVC: used vs allocated)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "All PVCs in the namespace. Solid = used, dashed = allocated (capacity). Not tied to pods.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 6,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "bytes"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": ".*\\(alloc\\)$" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "custom.lineWidth", "value": 1 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 21 },
+      "id": 3,
+      "maxPerRow": 3,
+      "options": {
+        "legend": { "calcs": ["last", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "repeat": "namespace",
+      "repeatDirection": "h",
+      "title": "$namespace — storage",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "editorMode": "code",
+          "expr": "sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace=~\"$namespace\"})",
+          "legendFormat": "{{persistentvolumeclaim}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "editorMode": "code",
+          "expr": "sum by (persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes{namespace=~\"$namespace\"})",
+          "legendFormat": "{{persistentvolumeclaim}} (alloc)",
+          "range": true,
+          "refId": "B"
         }
       ],
       "type": "timeseries"

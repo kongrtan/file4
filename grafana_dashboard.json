@@ -19,7 +19,7 @@
   "liveNow": true,
   "refresh": "10s",
   "schemaVersion": 39,
-  "tags": ["apip", "pods", "resources"],
+  "tags": ["apip", "workload", "resources"],
   "templating": {
     "list": [
       {
@@ -69,16 +69,16 @@
         "definition": "label_values(kube_pod_info{namespace=~\"$namespace\"}, pod)",
         "hide": 0,
         "includeAll": true,
-        "label": "Pod",
+        "label": "Workload",
         "multi": true,
-        "name": "pod",
+        "name": "workload",
         "options": [],
         "query": {
           "query": "label_values(kube_pod_info{namespace=~\"$namespace\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
-        "regex": "",
+        "regex": "/^(.+?)(?:-[a-z0-9]{6,10}-[a-z0-9]{5}|-[0-9]+)$/",
         "sort": 1,
         "type": "query"
       }
@@ -87,21 +87,21 @@
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "APIP Pod Resources (Memory / CPU vs request~limit)",
-  "uid": "apip-pod-resources",
-  "version": 7,
+  "title": "APIP Workload Resources (Memory / CPU vs request~limit)",
+  "uid": "apip-workload-resources",
+  "version": 8,
   "panels": [
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 301,
       "panels": [],
-      "title": "1. Memory (usage / request(min) / limit(max))",
+      "title": "1. Memory  (per-pod usage, workload req(min)/lim(max))",
       "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Memory working set (solid) bounded by request(min) / limit(max) dashed.",
+      "description": "Per-pod memory working set (solid, one line per pod). Dashed = workload request(min)/limit(max).",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -113,7 +113,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 8,
+            "fillOpacity": 6,
             "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
@@ -152,38 +152,32 @@
               { "id": "custom.fillOpacity", "value": 0 },
               { "id": "custom.lineWidth", "value": 1 }
             ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "usage" },
-            "properties": [
-              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }
-            ]
           }
         ]
       },
-      "gridPos": { "h": 7, "w": 4, "x": 0, "y": 1 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
       "id": 1,
-      "maxPerRow": 6,
+      "maxPerRow": 3,
       "options": {
-        "legend": { "calcs": ["last"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "legend": { "calcs": ["last", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "repeat": "pod",
+      "repeat": "workload",
       "repeatDirection": "h",
-      "title": "$pod",
+      "title": "$workload",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"})",
-          "legendFormat": "usage",
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"})",
+          "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"})",
+          "expr": "max(sum by (pod) (kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", resource=\"memory\"}))",
           "legendFormat": "req",
           "range": true,
           "refId": "B"
@@ -191,7 +185,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"memory\"})",
+          "expr": "max(sum by (pod) (kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", resource=\"memory\"}))",
           "legendFormat": "lim",
           "range": true,
           "refId": "C"
@@ -201,15 +195,15 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
       "id": 300,
       "panels": [],
-      "title": "2. CPU (usage / request(min) / limit(max))",
+      "title": "2. CPU  (per-pod usage, workload req(min)/lim(max))",
       "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "CPU usage (solid) bounded by request(min) / limit(max) dashed.",
+      "description": "Per-pod CPU usage (solid, one line per pod). Dashed = workload request(min)/limit(max).",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -221,7 +215,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 8,
+            "fillOpacity": 6,
             "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "insertNulls": false,
@@ -260,38 +254,32 @@
               { "id": "custom.fillOpacity", "value": 0 },
               { "id": "custom.lineWidth", "value": 1 }
             ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "usage" },
-            "properties": [
-              { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
-            ]
           }
         ]
       },
-      "gridPos": { "h": 7, "w": 4, "x": 0, "y": 9 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
       "id": 2,
-      "maxPerRow": 6,
+      "maxPerRow": 3,
       "options": {
-        "legend": { "calcs": ["last"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "legend": { "calcs": ["last", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
       },
-      "repeat": "pod",
+      "repeat": "workload",
       "repeatDirection": "h",
-      "title": "$pod",
+      "title": "$workload",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"$pod\", container!=\"\", container!=\"POD\"}[1m]))",
-          "legendFormat": "usage",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"}[1m]))",
+          "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"})",
+          "expr": "max(sum by (pod) (kube_pod_container_resource_requests{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", resource=\"cpu\"}))",
           "legendFormat": "req",
           "range": true,
           "refId": "B"
@@ -299,7 +287,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"$pod\", resource=\"cpu\"})",
+          "expr": "max(sum by (pod) (kube_pod_container_resource_limits{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", resource=\"cpu\"}))",
           "legendFormat": "lim",
           "range": true,
           "refId": "C"

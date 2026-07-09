@@ -155,9 +155,9 @@
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 1 },
       "id": 1,
-      "maxPerRow": 3,
+      "maxPerRow": 5,
       "options": {
         "legend": { "calcs": ["last", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
@@ -169,8 +169,8 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"})",
-          "legendFormat": "{{pod}}",
+          "expr": "label_replace(sum by (pod) (container_memory_working_set_bytes{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"}), \"p\", \"$1\", \"pod\", \".*-([^-]+)\")",
+          "legendFormat": "{{p}}",
           "range": true,
           "refId": "A"
         },
@@ -195,7 +195,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
       "id": 300,
       "panels": [],
       "title": "2. CPU  (per-pod usage, workload req(min)/lim(max))",
@@ -257,9 +257,9 @@
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 8 },
       "id": 2,
-      "maxPerRow": 3,
+      "maxPerRow": 5,
       "options": {
         "legend": { "calcs": ["last", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
         "tooltip": { "mode": "multi", "sort": "desc" }
@@ -271,8 +271,8 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"}[1m]))",
-          "legendFormat": "{{pod}}",
+          "expr": "label_replace(sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\", pod=~\"^$workload-([0-9]+|[a-z0-9]{6,10}-[a-z0-9]{5})$\", container!=\"\", container!=\"POD\"}[1m])), \"p\", \"$1\", \"pod\", \".*-([^-]+)\")",
+          "legendFormat": "{{p}}",
           "range": true,
           "refId": "A"
         },

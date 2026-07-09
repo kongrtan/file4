@@ -36,11 +36,7 @@
       },
       {
         "allValue": null,
-        "current": {
-          "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
-        },
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
         "definition": "label_values(kube_pod_info{namespace=~\"apip-ui|apip-mf-worker|apip-dac-worker\"}, namespace)",
         "hide": 0,
@@ -60,11 +56,7 @@
       },
       {
         "allValue": null,
-        "current": {
-          "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
-        },
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
         "definition": "label_values(kube_pod_info{namespace=~\"$namespace\"}, pod)",
         "hide": 0,
@@ -84,11 +76,7 @@
       },
       {
         "allValue": null,
-        "current": {
-          "selected": true,
-          "text": ["All"],
-          "value": ["$__all"]
-        },
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] },
         "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
         "definition": "label_values(kubelet_volume_stats_capacity_bytes{namespace=~\"$namespace\"}, persistentvolumeclaim)",
         "hide": 0,
@@ -111,16 +99,92 @@
   "time": { "from": "now-15m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "APIP Workload Resources (Memory / CPU / Storage)",
+  "title": "APIP Workload Resources (Storage / Memory / CPU)",
   "uid": "apip-workload-resources",
-  "version": 11,
+  "version": 12,
   "panels": [
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 302,
+      "panels": [],
+      "title": "1. Storage  (per-PVC used %, yellow>=70% red>=85%, alloc size)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "PVC used/allocated (%). Green<70, Yellow>=70, Red>=85. Display name shows allocated size (GiB). Independent of pods.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 0,
+          "mappings": [],
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 85 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 3, "x": 0, "y": 1 },
+      "id": 3,
+      "maxPerRow": 8,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.4.0",
+      "repeat": "pvc",
+      "repeatDirection": "h",
+      "title": "$pvc",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "editorMode": "code",
+          "expr": "100 * sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace=~\"$namespace\", persistentvolumeclaim=~\"$pvc\"}) / sum by (persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes{namespace=~\"$namespace\", persistentvolumeclaim=~\"$pvc\"})",
+          "instant": true,
+          "legendFormat": "used%",
+          "range": false,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "editorMode": "code",
+          "expr": "round(sum by (persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes{namespace=~\"$namespace\", persistentvolumeclaim=~\"$pvc\"}) / 1073741824, 0.1)",
+          "instant": true,
+          "legendFormat": "alloc",
+          "range": false,
+          "refId": "B"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "configFromData",
+          "options": {
+            "configRefId": "B",
+            "mappings": [
+              { "fieldName": "alloc", "handlerKey": "displayName" }
+            ]
+          }
+        }
+      ],
+      "type": "gauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
       "id": 301,
       "panels": [],
-      "title": "1. Memory  (per-pod usage, workload req(min)/lim(max))",
+      "title": "2. Memory  (per-pod usage, workload req(min)/lim(max))",
       "type": "row"
     },
     {
@@ -179,7 +243,7 @@
           }
         ]
       },
-      "gridPos": { "h": 9, "w": 4, "x": 0, "y": 1 },
+      "gridPos": { "h": 9, "w": 4, "x": 0, "y": 8 },
       "id": 1,
       "maxPerRow": 5,
       "options": {
@@ -219,10 +283,10 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 10 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
       "id": 300,
       "panels": [],
-      "title": "2. CPU  (per-pod usage, workload req(min)/lim(max))",
+      "title": "3. CPU  (per-pod usage, workload req(min)/lim(max))",
       "type": "row"
     },
     {
@@ -281,7 +345,7 @@
           }
         ]
       },
-      "gridPos": { "h": 9, "w": 4, "x": 0, "y": 11 },
+      "gridPos": { "h": 9, "w": 4, "x": 0, "y": 18 },
       "id": 2,
       "maxPerRow": 5,
       "options": {
@@ -318,61 +382,6 @@
         }
       ],
       "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
-      "id": 302,
-      "panels": [],
-      "title": "3. Storage  (per-PVC used %, yellow>=70% red>=85%)",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "PVC used / allocated (%). Green<70, Yellow>=70, Red>=85. Independent of pods/workloads.",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "mappings": [],
-          "max": 100,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 70 },
-              { "color": "red", "value": 85 }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 21 },
-      "id": 3,
-      "maxPerRow": 6,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "10.4.0",
-      "repeat": "pvc",
-      "repeatDirection": "h",
-      "title": "$pvc",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "100 * sum by (persistentvolumeclaim) (kubelet_volume_stats_used_bytes{namespace=~\"$namespace\", persistentvolumeclaim=~\"$pvc\"}) / sum by (persistentvolumeclaim) (kubelet_volume_stats_capacity_bytes{namespace=~\"$namespace\", persistentvolumeclaim=~\"$pvc\"})",
-          "instant": true,
-          "legendFormat": "{{persistentvolumeclaim}}",
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "type": "gauge"
     }
   ]
 }
